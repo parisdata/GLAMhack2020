@@ -59,7 +59,7 @@ with open('interestingyears.csv', 'w', newline='') as csvfile:
                 actors.append(e.text)
             if e.label_ == 'DATE':
                 if date:=dateparser.parse(e.text, languages=['en']):
-                    if not years or date.year >= years[-1] and date.year > 1800 and date.year < 2020 and (accession_year and date.year < int(accession_year)):
+                    if (not years or date.year >= years[-1]) and date.year not in years and date.year > 1800 and date.year < 2020 and (not accession_year or date.year < int(accession_year)):
                         years.append(date.year)
         if accession_year:
             years.append(int(accession_year))
@@ -80,6 +80,5 @@ with open('interestingyears.csv', 'w', newline='') as csvfile:
                 interesting_year = False
             years = [str(year) for year in years]
         # actors
-        flagged_actors = []
-        # flagged_actors = find_similar_names(set(actors), flagged_names)
+        flagged_actors = find_similar_names(set(actors), flagged_names)
         csvwriter.writerow([row['url'], str(interesting_year), ', '.join(years), ', '.join(flagged_actors), ', '.join(actors)])
