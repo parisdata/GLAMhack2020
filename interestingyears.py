@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Birk Weiberg <birk.weiberg@sapa.swiss>
+# 2020
+
+# download model first: python -m spacy download en_core_web_sm
+
+import re
 import pandas as pd
 import csv
 import spacy
@@ -19,29 +27,42 @@ def find_similar_names(a:list, b:list) -> list:
     for aa in a:
         for bb in b:
             similarity = difflib.SequenceMatcher(None, aa.lower().replace(' ', ''), bb.lower().replace(' ', '')).ratio()
-            if similarity > 0.85:
-                # print (aa, '|', bb, similarity)
-                matches.append(bb)
+            if similarity > 0.7:
+                matches.append(f'{bb}|{similarity}')
                 pass
     return matches
 
+year_pattern = re.compile(r'[12][0-9]{3}')
+
+def find_accession_year(accession_number:str) -> str:
+    if not pd.isnull(accession_number):
+        if accession_match:=year_pattern.search(accession_number):
+            accession_year = accession_match.group(0)
+            rests = accession_number.split(accession_year)
+            if rests[0] and rests[0][-1:].isnumeric():
+                return None
+            if rests[1] and rests[1][:1].isnumeric():
+                return None
+            return accession_year
+    return None
+
 with open('interestingyears.csv', 'w', newline='') as csvfile:
     csvwriter = csv.writer(csvfile)
-    csvwriter.writerow(['url', 'interesting_years', 'years', 'interesting_persons', 'persons', 'interesting_organizations', 'organizations'])
+    csvwriter.writerow(['url', 'interesting_years', 'years', 'interesting_actors', 'actors'])
     for _, row in works_df.iterrows():
         p = nlp(str(row['provenance']).replace(';', ' ; '))
         years = []
-        persons = []
-        organizations = []
+        actors = []
+        accession_year = find_accession_year(row['accnum'])
         for e in p.ents:
-            if e.label_ == 'PERSON':
-                persons.append(e.text)
-            if e.label_ == 'ORG':
-                organizations.append(e.text)
+            if e.label_ in ['PERSON', 'ORG']:
+                actors.append(e.text)
             if e.label_ == 'DATE':
                 if date:=dateparser.parse(e.text, languages=['en']):
-                    if not years or date.year >= years[-1] and date.year > 1800 and date.year < 2020:
+                    if (not years or date.year >= years[-1]) and date.year not in years and date.year > 1800 and date.year < 2020 and (not accession_year or date.year < int(accession_year)):
                         years.append(date.year)
+        if accession_year:
+            years.append(int(accession_year))
         # years
         # no flags raised yet ...
         interesting_year = False
@@ -58,7 +79,6 @@ with open('interestingyears.csv', 'w', newline='') as csvfile:
                 # acquired too early
                 interesting_year = False
             years = [str(year) for year in years]
-        # persons
-        flagged_persons = find_similar_names(persons, flagged_names)
-        flagged_organizations = find_similar_names(organizations, flagged_names)
-        csvwriter.writerow([row['url'], str(interesting_year), ', '.join(years), ', '.join(flagged_persons), ', '.join(persons), ', '.join(flagged_organizations), ', '.join(organizations)])
+        # actors
+        flagged_actors = find_similar_names(set(actors), flagged_names)
+        csvwriter.writerow([row['url'], str(interesting_year), ', '.join(years), ', '.join(flagged_actors), ', '.join(actors)])
