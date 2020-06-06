@@ -5,7 +5,7 @@ https://make.opendata.ch/wiki/event:2020-06
 The description of the challenge can be found here: https://hack.glam.opendata.ch/project/7
 
 ## Goals
-The goal is to automatically analyze, classify, detect patterns in provenance texts that are given in a csv file and rank the results. For detection, quantification and characterization, we tested for red flags that are stated in separate csv sheets. The ranking is supposed to help turn up a deliberately concaled history of looting, forced sale, theft or forgery.
+The goal is to automatically analyze, classify, detect patterns in provenance texts that are given in a csv file and rank the results. For detection, quantification and characterization, we tested for red flags that are stated in separate csv sheets. The ranking is supposed to help turn up a deliberately concealed history of looting, forced sale, theft or forgery.
 
 The code is supposed to be abstract enough to be used in other contexts as well.
 
