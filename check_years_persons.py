@@ -150,13 +150,17 @@ def main():
     works_df.replace(to_replace='\n', value=' ', regex=True, inplace=True)
 
     names_df = pd.read_csv(args.inputpersons)
+    names_df.replace(to_replace='\n', value=' ', regex=True, inplace=True)
+    names_df.replace(to_replace='\s+', value=' ', regex=True, inplace=True)
     flagged_names_dict = dict()    
     for _, row in names_df.iterrows():
-        full_name = row['First Name Last Name'].strip()
-        if full_name not in flagged_names_dict:
-            flagged_names_dict[full_name] = row['permID'].strip()
-        else:
-            print(f'Name {full_name} is not unique!')
+        names = row['Name Variants'].strip()
+        for name in re.split(r'\s*,\s*', names):
+            if name:
+                if name not in flagged_names_dict:
+                    flagged_names_dict[name] = row['permID'].strip()
+                else:
+                    print(f'Name {name} is not unique!')
 
     parse_lines(works_df, flagged_names_dict, args.output)
 
