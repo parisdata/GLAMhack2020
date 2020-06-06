@@ -82,6 +82,9 @@ def main():
 
     # result csv
     df = df.assign(**resultDict)
+    #parsing = pd.read_csv('years-persons.csv')
+    #merged = df.merge(parsing, on='url')
+    #merged.to_csv(args.output_file, sep=',')
     df.to_csv(args.output_file, sep=',')
 
 if __name__ == '__main__':
