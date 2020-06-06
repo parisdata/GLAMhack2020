@@ -23,11 +23,21 @@ def countAndReturnBrackets(row):
         return 0
 
 # Counting red flags
-def countRedFlags(row, rfdict):
+def countRedFlags(row, words):
     amount = 0
-    for key in rfdict:
-        amount = amount + countAndReturnChar(row, key)
+    for word in words:
+        amount = amount + countAndReturnChar(row, word)
     return amount
+
+# creating red flag dict
+def createRedFlagDict(rff):
+    rfdict = {}
+    for index, row in rff.iterrows():
+        if row["type of flag"] in rfdict:
+            rfdict[row["type of flag"]].append(row["word"])
+        else:
+            rfdict[row["type of flag"]] = [row["word"]]
+    return rfdict
 
 def countAndReturnWordCount(row):
     # Remove any special characters and digits, lastly calculate minus one, because empty entry is "nan"
@@ -38,30 +48,40 @@ def main():
     parser.add_argument('input_file')
     parser.add_argument('output_file')
     parser.add_argument('column')
-    parser.add_argument('red_flag_file')
+    parser.add_argument('red_flag_phrase_file')
+    parser.add_argument('red_flag_name_file')
     args = parser.parse_args()
 
-    # Additional columns
-    questionMarks = []
-    brackets = []
-    commata = []
-    numberOfTo = []
-    wordCount = []
-    length = []
-    redflags = []
+    # Preparation
+    resultDict = {'length': [], 'wordCount': [], '# of commata': [], '# of to': [], '# red flags total': [], '# red flag names': []}
     df = pd.read_csv(args.input_file)
-    rff = pd.read_csv(args.red_flag_file)
-    rfdict = dict(zip(list(rff["word"]),list(rff["type of flag"])))
+    rfpf = pd.read_csv(args.red_flag_phrase_file)
+    rfnf = pd.read_csv(args.red_flag_name_file)
+    rfdict = createRedFlagDict(rfpf)
+    nameCol = rfnf["Last Name"]
     provenanceCol = df[args.column]
+
+    # Counting
     for entry in provenanceCol:
-        questionMarks.append(countAndReturnChar(str(entry), '?'))
-        brackets.append(countAndReturnBrackets(str(entry)))
-        commata.append(countAndReturnChar(str(entry), ','))
-        numberOfTo.append(countAndReturnChar(str(entry), ' to '))
-        wordCount.append(countAndReturnWordCount(str(entry)))
-        length.append(len(str(entry)))
-        redflags.append(countRedFlags(str(entry),rfdict))
-    df = df.assign(**{'length': length,'word count': wordCount,'# red flags' : redflags, '# questionMarks' : questionMarks, '# Brackets' : brackets, '# of commata' : commata, '# of to' : numberOfTo})
+        resultDict['length'].append(len(str(entry)))
+        resultDict['wordCount'].append(countAndReturnWordCount(str(entry)))
+        resultDict['# of commata'].append(countAndReturnChar(str(entry), ','))
+        resultDict['# of to'].append(countAndReturnChar(str(entry), ' to '))
+        total = 0
+        for key, val in rfdict.items():
+            amount = countRedFlags(str(entry), val)
+            total = total + amount
+            if key in resultDict:
+                resultDict[key].append(amount)
+            else:
+                resultDict[key] = [amount]
+        names = countRedFlags(str(entry), nameCol)
+        total = total + names
+        resultDict['# red flag names'].append(names)
+        resultDict['# red flags total'].append(total)
+
+    # result csv
+    df = df.assign(**resultDict)
     df.to_csv(args.output_file, sep=',')
 
 if __name__ == '__main__':
