@@ -66,7 +66,10 @@ def parse_lines(works_df:pd.DataFrame, flagged_names:list, output:str):
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(['url', 'interesting_years', 'provenance_gap', 'years', 'interesting_actors', 'actors'])
         for _, row in tqdm(works_df.iterrows(), total=works_df.shape[0]):
-            p = nlp(str(row['provenance']).replace(';', ' ; '))
+            provenance = str(row['provenance']).replace(';', ' ; ')
+            # delete live dates
+            provenance = re.sub(r'\([12][0-9]{3}\.*[-–—]\.*[12][0-9]{3}\)', '', provenance)
+            p = nlp(provenance)
             years = []
             actors = []
             accession_year = find_accession_year(row['accnum'])
