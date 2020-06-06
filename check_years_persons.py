@@ -38,7 +38,7 @@ def find_creation_year(date_str:str, nlp) -> int:
         return date.year
     century_match = century_pattern.search(date_str)
     if century_match:
-        year = int(century_match.group(0)[:2]) * 100 + 50
+        year = (int(century_match.group(0)[:2])-1) * 100 + 50
         return year
     years = []
     for e in nlp(date_str).ents:
