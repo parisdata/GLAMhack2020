@@ -3,25 +3,13 @@ from csv import reader
 import pandas as pd
 import argparse
 
-def checklen(input_file, output_file, column):
-   ''' How long is the provenance text? '''
-   with open(input_file, mode='r') as infile:
-       with open(output_file, mode='w') as outfile:
-         reader = csv.reader(infile)
-         writer = csv.writer(outfile)
-         row1 = next(reader)
-         pos = row1.index(column)
-         writer.writerow(row1 + ["text length"])
-         for row in reader:
-             writer.writerow(row + [len(row[pos])])
-
 # Method which counts occurrence of specified term within a string (careful when whitespace matters)
 # Returns empty sting in case term is 0 times in string
 def countAndReturnChar(row, term):
     if row.count(term) > 0:
         return row.count(term)
     else:
-        return ''
+        return 0
 
 # Special case of counting occurance, as an opening bracket always needs a closing bracket, too
 def countAndReturnBrackets(row):
@@ -32,7 +20,14 @@ def countAndReturnBrackets(row):
     elif row.count(term) > 1:
         return row.count(term) - 1
     else:
-        return ''
+        return 0
+
+# Counting red flags
+def countRedFlags(row, rfdict):
+    amount = 0
+    for key in rfdict:
+        amount = amount + countAndReturnChar(row, key)
+    return amount
 
 def countAndReturnWordCount(row):
     # Remove any special characters and digits, lastly calculate minus one, because empty entry is "nan"
@@ -43,6 +38,7 @@ def main():
     parser.add_argument('input_file')
     parser.add_argument('output_file')
     parser.add_argument('column')
+    parser.add_argument('red_flag_file')
     args = parser.parse_args()
 
     # Additional columns
@@ -52,7 +48,10 @@ def main():
     numberOfTo = []
     wordCount = []
     length = []
+    redflags = []
     df = pd.read_csv(args.input_file)
+    rff = pd.read_csv(args.red_flag_file)
+    rfdict = dict(zip(list(rff["word"]),list(rff["type of flag"])))
     provenanceCol = df[args.column]
     for entry in provenanceCol:
         questionMarks.append(countAndReturnChar(str(entry), '?'))
@@ -61,7 +60,8 @@ def main():
         numberOfTo.append(countAndReturnChar(str(entry), ' to '))
         wordCount.append(countAndReturnWordCount(str(entry)))
         length.append(len(str(entry)))
-    df = df.assign(**{'length': length,'word count': wordCount,'# questionMarks' : questionMarks, '# Brackets' : brackets, '# of commata' : commata, '# of to' : numberOfTo})
+        redflags.append(countRedFlags(str(entry),rfdict))
+    df = df.assign(**{'length': length,'word count': wordCount,'# red flags' : redflags, '# questionMarks' : questionMarks, '# Brackets' : brackets, '# of commata' : commata, '# of to' : numberOfTo})
     df.to_csv(args.output_file, sep=',')
 
 if __name__ == '__main__':
