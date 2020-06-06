@@ -131,8 +131,7 @@ def parse_lines(works_df:pd.DataFrame, flagged_names_dict:dict, output:str):
             # actors
             flagged_actors = find_similar_names(set(actors), flagged_names_dict.keys())
             flagged_actors_ids = [flagged_names_dict[n] for n in flagged_actors]
-            if flagged_actors_ids:
-                csvwriter.writerow([row['url'], str(interesting_year), str(provenance_gap), ', '.join(years), ', '.join(flagged_actors), ', '.join(flagged_actors_ids), ', '.join(actors)])
+            csvwriter.writerow([row['url'], str(interesting_year), str(provenance_gap), ', '.join(years), ', '.join(flagged_actors), ', '.join(flagged_actors_ids), ', '.join(actors)])
 
 def main():
     parser = argparse.ArgumentParser()
