@@ -99,7 +99,7 @@ def parse_lines(works_df:pd.DataFrame, flagged_names_dict:dict, output:str):
             accession_year = find_accession_year(row['accnum'])
             if 'date' in row:
                 creation_year = find_creation_year(row['date'], nlp)
-                if creation_year != 0:
+                if creation_year != 0 and int(creation_year) in range(0, 1946):
                     years.append(creation_year)
             for e in p.ents:
                 if e.label_ in ['PERSON', 'ORG']:
@@ -107,9 +107,9 @@ def parse_lines(works_df:pd.DataFrame, flagged_names_dict:dict, output:str):
                 if e.label_ == 'DATE':
                     date = dateparser.parse(e.text, languages=['en'])
                     if date:
-                        if (not years or date.year >= years[-1]) and date.year not in years and date.year > 1800 and date.year < 2020 and (not accession_year or date.year < int(accession_year)):
+                        if (not years or date.year >= years[-1]) and date.year not in years and date.year in range(1800, 2020) and (not accession_year or date.year < int(accession_year)):
                             years.append(date.year)
-            if accession_year:
+            if accession_year and int(accession_year) in range(1800, 2020):
                 years.append(int(accession_year))
             # years
             # no flags raised yet ...
