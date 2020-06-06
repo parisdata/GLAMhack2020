@@ -16,7 +16,7 @@ The code is supposed to be abstract enough to be used in other contexts as well.
 Sample files are added in the repository. The original files can be found here: https://www.openartdata.org/2020/06/art-provenance-dataset-text-analysis.html
 
 ## Languages
-Python 3
+Python 3, install packages via `pip install -r requirements.txt` and load language model with `python -m spacy download en_core_web_sm`.
 
 ## Contributors
 
