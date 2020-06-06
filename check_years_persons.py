@@ -6,37 +6,30 @@
 # download model first: python -m spacy download en_core_web_sm
 
 import re
+import argparse
 import pandas as pd
 import csv
+from tqdm import tqdm
 import spacy
 import dateparser
-import difflib
+from fuzzywuzzy import fuzz
 
-nlp = spacy.load('en_core_web_sm')
 
-works_df = pd.read_csv('works.csv', nrows=5000)
-works_df.dropna(inplace=True)
-works_df = works_df.sample(n=1000)
-
-names_df = pd.read_csv('red-flags-names.csv')
-flagged_names = names_df['First Name Last Name'].tolist()
-flagged_names = [name.strip() for name in flagged_names]
+year_pattern = re.compile(r'[12][0-9]{3}')
 
 def find_similar_names(a:list, b:list) -> list:
     matches = []
     for aa in a:
         for bb in b:
-            similarity = difflib.SequenceMatcher(None, aa.lower().replace(' ', ''), bb.lower().replace(' ', '')).ratio()
-            if similarity > 0.7:
-                matches.append(f'{bb}|{similarity}')
-                pass
+            ratio = fuzz.ratio(aa.lower().replace(' ', ''), bb.lower().replace(' ', ''))
+            if ratio > 85 and bb not in matches:
+                matches.append(bb)
     return matches
-
-year_pattern = re.compile(r'[12][0-9]{3}')
 
 def find_accession_year(accession_number:str) -> str:
     if not pd.isnull(accession_number):
-        if accession_match:=year_pattern.search(accession_number):
+        accession_match = year_pattern.search(accession_number)
+        if accession_match:
             accession_year = accession_match.group(0)
             rests = accession_number.split(accession_year)
             if rests[0] and rests[0][-1:].isnumeric():
@@ -46,39 +39,67 @@ def find_accession_year(accession_number:str) -> str:
             return accession_year
     return None
 
-with open('interestingyears.csv', 'w', newline='') as csvfile:
-    csvwriter = csv.writer(csvfile)
-    csvwriter.writerow(['url', 'interesting_years', 'years', 'interesting_actors', 'actors'])
-    for _, row in works_df.iterrows():
-        p = nlp(str(row['provenance']).replace(';', ' ; '))
-        years = []
-        actors = []
-        accession_year = find_accession_year(row['accnum'])
-        for e in p.ents:
-            if e.label_ in ['PERSON', 'ORG']:
-                actors.append(e.text)
-            if e.label_ == 'DATE':
-                if date:=dateparser.parse(e.text, languages=['en']):
-                    if (not years or date.year >= years[-1]) and date.year not in years and date.year > 1800 and date.year < 2020 and (not accession_year or date.year < int(accession_year)):
-                        years.append(date.year)
-        if accession_year:
-            years.append(int(accession_year))
-        # years
-        # no flags raised yet ...
-        interesting_year = False
-        for year in years:
-            if year in range(1933, 1946):
-                # Nazi period mentioned
-                interesting_year = True
-                pass
-        if years:
-            if min(years) > 1945:
-                # first occurance after the war
-                interesting_year = True
-            if max(years) < 1930:
-                # acquired too early
-                interesting_year = False
-            years = [str(year) for year in years]
-        # actors
-        flagged_actors = find_similar_names(set(actors), flagged_names)
-        csvwriter.writerow([row['url'], str(interesting_year), ', '.join(years), ', '.join(flagged_actors), ', '.join(actors)])
+def parse_lines(works_df:pd.DataFrame, flagged_names:list, output:str):
+    nlp = spacy.load('en_core_web_sm')
+    with open(output, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        csvwriter.writerow(['url', 'interesting_years', 'years', 'interesting_actors', 'actors'])
+        for _, row in tqdm(works_df.iterrows(), total=works_df.shape[0]):
+            p = nlp(str(row['provenance']).replace(';', ' ; '))
+            years = []
+            actors = []
+            accession_year = find_accession_year(row['accnum'])
+            for e in p.ents:
+                if e.label_ in ['PERSON', 'ORG']:
+                    actors.append(e.text)
+                if e.label_ == 'DATE':
+                    if date:=dateparser.parse(e.text, languages=['en']):
+                        if (not years or date.year >= years[-1]) and date.year not in years and date.year > 1800 and date.year < 2020 and (not accession_year or date.year < int(accession_year)):
+                            years.append(date.year)
+            if accession_year:
+                years.append(int(accession_year))
+            # years
+            # no flags raised yet ...
+            interesting_year = False
+            for year in years:
+                if year in range(1933, 1946):
+                    # Nazi period mentioned
+                    interesting_year = True
+                    pass
+            if years:
+                if min(years) > 1945:
+                    # first occurance after the war
+                    interesting_year = True
+                if max(years) < 1930:
+                    # acquired too early
+                    interesting_year = False
+                years = [str(year) for year in years]
+            # actors
+            flagged_actors = find_similar_names(set(actors), flagged_names)
+            if flagged_actors:
+                csvwriter.writerow([row['url'], str(interesting_year), ', '.join(years), ', '.join(flagged_actors), ', '.join(actors)])
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--sample', help='process random sample only', type=int, default=0)
+    parser.add_argument('-iw', '--inputworks', help='csv with works', type=str, default='works.csv')
+    parser.add_argument('-ip', '--inputpersons', help='csv with persons', type=str, default='red-flags-names.csv')
+    parser.add_argument('-o', '--output', help='process random sample only', type=str, default='years-persons.csv')
+    args = parser.parse_args()
+    if args.sample == 0:
+        works_df = pd.read_csv(args.inputworks)
+    else:
+        works_df = pd.read_csv(args.inputworks, nrows=args.sample*4)
+    works_df.dropna(inplace=True)
+    if args.sample > 0:
+        works_df = works_df.sample(n=min(args.sample, works_df.shape[0]))
+    works_df.replace(to_replace='\n', value=' ', regex=True, inplace=True)
+
+    names_df = pd.read_csv(args.inputpersons)
+    flagged_names = names_df['First Name Last Name'].tolist()
+    flagged_names = [name.strip() for name in flagged_names]
+
+    parse_lines(works_df, flagged_names, args.output)
+
+if __name__ == '__main__':
+            main()
