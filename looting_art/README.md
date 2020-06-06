@@ -21,3 +21,6 @@ Go to http://127.0.0.1:8000/ to tests it locally.
 ## Pitfalls and warning
 There are no input/security checks done, so do not use it in productive more just yet.
 It currently uses the counting.py file from another project (in parent folder), so if that is updated, you have to copy paste the code in this prototype and wother case adapt the code...
+
+## Frontend (so far)
+![Alt text](/screenshot.jpg?raw=true)
