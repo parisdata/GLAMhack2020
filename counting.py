@@ -24,10 +24,7 @@ def countAndReturnBrackets(row):
 
 # Counting red flags
 def countRedFlags(row, words):
-    amount = 0
-    for word in words:
-        amount = amount + countAndReturnChar(row, word)
-    return amount
+    return sum([row.count(word) for word in words])
 
 # creating red flag dict
 def createRedFlagDict(rff):
@@ -45,21 +42,21 @@ def countAndReturnWordCount(row):
 
 def main():
     parser = argparse.ArgumentParser('check length of provenance texts')
-    parser.add_argument('input_file')
-    parser.add_argument('output_file')
-    parser.add_argument('column')
-    parser.add_argument('red_flag_phrase_file')
-    parser.add_argument('red_flag_name_file')
+    parser.add_argument('input_file', help='input csv file with provenance texts', type=str)
+    parser.add_argument('output_file', help='name of output file', type=str)
+    parser.add_argument('--col', help='provenance column name', type=str, default='provenance')
+    parser.add_argument('--rfphrase', help='csv file with red flag phrases', type=str, default='red-flags-phrases.csv')
+    parser.add_argument('--rfname', help='csv file with red flag names', type=str, default='red-flags-names.csv')
     args = parser.parse_args()
 
     # Preparation
     resultDict = {'length': [], 'wordCount': [], '# of commata': [], '# of to': [], '# red flags total': [], '# red flag names': []}
     df = pd.read_csv(args.input_file)
-    rfpf = pd.read_csv(args.red_flag_phrase_file)
-    rfnf = pd.read_csv(args.red_flag_name_file)
+    rfpf = pd.read_csv(args.rfphrase)
+    rfnf = pd.read_csv(args.rfname)
     rfdict = createRedFlagDict(rfpf)
     nameCol = rfnf["Last Name"]
-    provenanceCol = df[args.column]
+    provenanceCol = df[args.col]
 
     # Counting
     for entry in provenanceCol:
@@ -82,6 +79,9 @@ def main():
 
     # result csv
     df = df.assign(**resultDict)
+    #parsing = pd.read_csv('years-persons.csv')
+    #merged = df.merge(parsing, on='url')
+    #merged.to_csv(args.output_file, sep=',')
     df.to_csv(args.output_file, sep=',')
 
 if __name__ == '__main__':
