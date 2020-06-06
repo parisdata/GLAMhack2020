@@ -24,10 +24,7 @@ def countAndReturnBrackets(row):
 
 # Counting red flags
 def countRedFlags(row, words):
-    amount = 0
-    for word in words:
-        amount = amount + countAndReturnChar(row, word)
-    return amount
+    return sum([row.count(word) for word in words])
 
 # creating red flag dict
 def createRedFlagDict(rff):
