@@ -47,6 +47,7 @@ def main():
     parser.add_argument('--col', help='provenance column name', type=str, default='provenance')
     parser.add_argument('--rfphrase', help='csv file with red flag phrases', type=str, default='red-flags-phrases.csv')
     parser.add_argument('--rfname', help='csv file with red flag names', type=str, default='red-flags-names.csv')
+    parser.add_argument('--merging', help='merging?', type=int, default=0)
     args = parser.parse_args()
 
     # Preparation
@@ -79,10 +80,18 @@ def main():
 
     # result csv
     df = df.assign(**resultDict)
-    #parsing = pd.read_csv('years-persons.csv')
-    #merged = df.merge(parsing, on='url')
-    #merged.to_csv(args.output_file, sep=',')
-    df.to_csv(args.output_file, sep=',')
+
+    if args.merging:
+        parsing = pd.read_csv('years-persons.csv')
+        merged = df.merge(parsing, on='url')
+        indexes = []
+        for index, row in merged.iterrows():
+            indexes.append(10*int(row["interesting_years"]) + min(50,row["provenance_gap"])/10 + (len(str(row["interesting_actors_ids"]))-str(row["interesting_actors_ids"]).count(',')*2)/12*5)
+        merged['index'] = indexes
+        merged.to_csv(args.output_file, sep=',')
+    else:
+        df.to_csv(args.output_file, sep=',')
+
 
 if __name__ == '__main__':
             main()
