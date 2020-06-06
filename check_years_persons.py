@@ -84,11 +84,11 @@ def find_provenance_gap(years:list) -> int:
             return b_year - a_year
     return 0
 
-def parse_lines(works_df:pd.DataFrame, flagged_names:list, output:str):
+def parse_lines(works_df:pd.DataFrame, flagged_names_dict:dict, output:str):
     nlp = spacy.load('en_core_web_sm')
     with open(output, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile)
-        csvwriter.writerow(['url', 'interesting_years', 'provenance_gap', 'years', 'interesting_actors', 'actors'])
+        csvwriter.writerow(['url', 'interesting_years', 'provenance_gap', 'years', 'interesting_actors', 'interesting_actors_ids', 'actors'])
         for _, row in tqdm(works_df.iterrows(), total=works_df.shape[0]):
             provenance = str(row['provenance']).replace(';', ' ; ')
             # delete live dates
@@ -129,8 +129,10 @@ def parse_lines(works_df:pd.DataFrame, flagged_names:list, output:str):
             provenance_gap = find_provenance_gap(years)
             years = [str(year) for year in years]
             # actors
-            flagged_actors = find_similar_names(set(actors), flagged_names)
-            csvwriter.writerow([row['url'], str(interesting_year), str(provenance_gap), ', '.join(years), ', '.join(flagged_actors), ', '.join(actors)])
+            flagged_actors = find_similar_names(set(actors), flagged_names_dict.keys())
+            flagged_actors_ids = [flagged_names_dict[n] for n in flagged_actors]
+            if flagged_actors_ids:
+                csvwriter.writerow([row['url'], str(interesting_year), str(provenance_gap), ', '.join(years), ', '.join(flagged_actors), ', '.join(flagged_actors_ids), ', '.join(actors)])
 
 def main():
     parser = argparse.ArgumentParser()
@@ -149,10 +151,15 @@ def main():
     works_df.replace(to_replace='\n', value=' ', regex=True, inplace=True)
 
     names_df = pd.read_csv(args.inputpersons)
-    flagged_names = names_df['First Name Last Name'].tolist()
-    flagged_names = [name.strip() for name in flagged_names]
+    flagged_names_dict = dict()    
+    for _, row in names_df.iterrows():
+        full_name = row['First Name Last Name'].strip()
+        if full_name not in flagged_names_dict:
+            flagged_names_dict[full_name] = row['permID'].strip()
+        else:
+            print(f'Name {full_name} is not unique!')
 
-    parse_lines(works_df, flagged_names, args.output)
+    parse_lines(works_df, flagged_names_dict, args.output)
 
 if __name__ == '__main__':
             main()
