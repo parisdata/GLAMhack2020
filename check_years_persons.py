@@ -16,15 +16,39 @@ from fuzzywuzzy import fuzz
 
 
 year_pattern = re.compile(r'[12][0-9]{3}')
+century_pattern = re.compile(r'[12][0-9]th\s+c')
+circa_pattern = re.compile(r'c[a]*\.')
+dash_pattern = re.compile(r'[-–—]')
 
 def find_similar_names(a:list, b:list) -> list:
     matches = []
     for aa in a:
         for bb in b:
             ratio = fuzz.ratio(aa.lower().replace(' ', ''), bb.lower().replace(' ', ''))
-            if ratio > 85 and bb not in matches:
+            if ratio > 80 and bb not in matches:
                 matches.append(bb)
     return matches
+
+def find_creation_year(date_str:str, nlp) -> int:
+    # delete circas
+    date_str = circa_pattern.sub('', date_str)
+    date_str = dash_pattern.sub(' - ', date_str)
+    date = dateparser.parse(date_str, languages=['en'])
+    if date and date.year in range(1000, 2030):
+        return date.year
+    century_match = century_pattern.search(date_str)
+    if century_match:
+        year = int(century_match.group(0)[:2]) * 100 + 50
+        return year
+    years = []
+    for e in nlp(date_str).ents:
+        if e.label_ == 'DATE':
+            date = dateparser.parse(e.text, languages=['en'])
+            if date:
+                years.append(date.year)
+    if years:
+        return max(years)
+    return 0
 
 def find_accession_year(accession_number:str) -> str:
     if not pd.isnull(accession_number):
@@ -73,11 +97,16 @@ def parse_lines(works_df:pd.DataFrame, flagged_names:list, output:str):
             years = []
             actors = []
             accession_year = find_accession_year(row['accnum'])
+            if 'date' in row:
+                creation_year = find_creation_year(row['date'], nlp)
+                if creation_year != 0:
+                    years.append(creation_year)
             for e in p.ents:
                 if e.label_ in ['PERSON', 'ORG']:
                     actors.append(e.text)
                 if e.label_ == 'DATE':
-                    if date:=dateparser.parse(e.text, languages=['en']):
+                    date = dateparser.parse(e.text, languages=['en'])
+                    if date:
                         if (not years or date.year >= years[-1]) and date.year not in years and date.year > 1800 and date.year < 2020 and (not accession_year or date.year < int(accession_year)):
                             years.append(date.year)
             if accession_year:
