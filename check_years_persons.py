@@ -39,11 +39,32 @@ def find_accession_year(accession_number:str) -> str:
             return accession_year
     return None
 
+def find_provenance_gap(years:list) -> int:
+    # Is there a gap for the time from 1933 to 1945 and how big is it?
+    if years:
+        # make sure there are no years between 1934 and 1944 in the list
+        for y in range(1934, 1945):
+            if y in years:
+                return 0
+        # find last year up until 1933
+        a_year = 0
+        for y in years:
+            if y <= 1933:
+                a_year = y
+        # find first year from 1945
+        b_year = 0
+        for y in years[::-1]:
+            if y >= 1945:
+                b_year = y
+        if a_year and b_year:
+            return b_year - a_year
+    return 0
+
 def parse_lines(works_df:pd.DataFrame, flagged_names:list, output:str):
     nlp = spacy.load('en_core_web_sm')
     with open(output, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile)
-        csvwriter.writerow(['url', 'interesting_years', 'years', 'interesting_actors', 'actors'])
+        csvwriter.writerow(['url', 'interesting_years', 'provenance_gap', 'years', 'interesting_actors', 'actors'])
         for _, row in tqdm(works_df.iterrows(), total=works_df.shape[0]):
             p = nlp(str(row['provenance']).replace(';', ' ; '))
             years = []
@@ -73,11 +94,11 @@ def parse_lines(works_df:pd.DataFrame, flagged_names:list, output:str):
                 if max(years) < 1930:
                     # acquired too early
                     interesting_year = False
-                years = [str(year) for year in years]
+            provenance_gap = find_provenance_gap(years)
+            years = [str(year) for year in years]
             # actors
             flagged_actors = find_similar_names(set(actors), flagged_names)
-            if flagged_actors:
-                csvwriter.writerow([row['url'], str(interesting_year), ', '.join(years), ', '.join(flagged_actors), ', '.join(actors)])
+            csvwriter.writerow([row['url'], str(interesting_year), str(provenance_gap), ', '.join(years), ', '.join(flagged_actors), ', '.join(actors)])
 
 def main():
     parser = argparse.ArgumentParser()
