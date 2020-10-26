@@ -22,6 +22,14 @@ The scripts expect a csv dataset with provenance texts as input and a filename f
 
 We added sample files for testing purposes that can be called with the --sample flag.
 
+If you would like to use Conda instead of pip, you can use the following commands:
+
+conda create -n glamhack python=3
+conda activate glamhack
+conda install pandas spacy tqdm dateparser fuzzywuzzy
+python -m spacy download en_core_web_sm
+./download.sh
+
 ## Languages
 Python 3
 
