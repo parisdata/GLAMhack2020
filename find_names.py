@@ -12,20 +12,23 @@ import csv
 from tqdm import tqdm
 import spacy
 import dateparser
-from fuzzywuzzy import fuzz
 
+# Pattern which liberally matches the form "(birthyear? - before deathyear)" (but stops at closing parens)
+BIRTH_DEATH_YEARS = re.compile(r'\([^)]*?[12][0-9]{3}[^)]*?[-–—-][^)]*?[12][0-9]{3}[^)]*?\)')
 
 def parse_lines(works_df:pd.DataFrame, output:str):
-    names = []
+    names = set()
     nlp = spacy.load('en_core_web_sm')
     for _, row in tqdm(works_df.iterrows(), total=works_df.shape[0]):
-        provenance = str(row['provenance']).replace(';', ' ; ')
-        # delete live dates
-        provenance = re.sub(r'\([12][0-9]{3}\.*[-–—]\.*[12][0-9]{3}\)', '', provenance)
+        # spacy tokenizer doesn't split on semicolon by default, so add spaces
+        provenance = str(row['provenance']).replace('.;', '. ').replace(';', ' ; ')
+        # Remove lifespan (ie birth-death) dates
+        provenance = BIRTH_DEATH_YEARS.sub(' ', provenance)
         p = nlp(provenance)
         for e in p.ents:
-            if e.label_ in ['PERSON', 'ORG'] and e.text not in names:
-                names.append(e.text)
+            if e.label_ in ['PERSON', 'ORG', 'NORP']:
+                names.add(e.text.strip())
+
     with open(output, 'w') as f:
         for n in sorted(names):
             f.write(f'{n}\n')
