@@ -7,3 +7,8 @@
 /years-persons.csv
 
 output_flagged.csv
+
+*.pyc
+*~
+__pycache__
+
