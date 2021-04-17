@@ -30,10 +30,13 @@ def countRedFlags(row, words):
 def createRedFlagDict(rff):
     rfdict = {}
     for index, row in rff.iterrows():
-        if row["type of flag"] in rfdict:
-            rfdict[row["type of flag"]].append(row["word"])
+        if type(row.get("type of flag")) != str or type(row.get("word")) != str:
+            # Skip empty rows
+            continue
+        if row.get("type of flag") in rfdict:
+            rfdict[row.get("type of flag")].append(row.get("word"))
         else:
-            rfdict[row["type of flag"]] = [row["word"]]
+            rfdict[row.get("type of flag")] = [row.get("word")]
     return rfdict
 
 def countAndReturnWordCount(row):
